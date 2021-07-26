@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,12 +20,34 @@ namespace ApiService.Service
         {
             _logger.LogInformation("Entering GetCourses");
 
-           
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+            builder.DataSource = "azuretutorialdemo.database.windows.net";
+            builder.UserID = "azuredemo";
+            builder.Password = "sachin123!@#";
+            builder.InitialCatalog = "azuretutorial";
 
             List<Course> courses = new List<Course>();
-            courses.Add(new Course { CourseId = "1", CourseName = "AZ-204 Developing Azure solutions", Rating = "4.5" });
-            courses.Add(new Course { CourseId = "2", CourseName = "AZ-303 Architecting Azure solutions", Rating = "4.6" });
-            courses.Add(new Course { CourseId = "3", CourseName = "DP-203 Azure Data Engineer", Rating = "4.7" });
+
+            using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+            {
+                String sql = "SELECT CourseId,CourseName,Rating FROM [dbo].[Course]";
+
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                {
+                    connection.Open();
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Course course = new Course();
+                            course.CourseId = reader["CourseId"].ToString();
+                            course.CourseName = reader["CourseName"].ToString();
+                            course.Rating = reader["Rating"].ToString();
+                            courses.Add(course);
+                        }
+                    }
+                }
+            }
             _logger.LogInformation("Exiting GetCourses");
             return courses;
         }
