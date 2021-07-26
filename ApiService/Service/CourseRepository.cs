@@ -1,4 +1,5 @@
 ﻿using ApiService.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -11,43 +12,46 @@ namespace ApiService.Service
     public class CourseRepository : ICourseRepository
     {
         private ILogger<CourseRepository> _logger;
+        private IConfiguration _configuration;
 
-        public CourseRepository(ILogger<CourseRepository> logger)
+        public CourseRepository(ILogger<CourseRepository> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
         }
         public List<Course> GetCourses()
         {
             _logger.LogInformation("Entering GetCourses");
 
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
-            builder.DataSource = "azuretutorialdemo.database.windows.net";
-            builder.UserID = "azuredemo";
-            builder.Password = "sachin123!@#";
-            builder.InitialCatalog = "azuretutorial";
-
             List<Course> courses = new List<Course>();
 
-            using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+            try
             {
-                String sql = "SELECT CourseId,CourseName,Rating FROM [dbo].[Course]";
-
-                using (SqlCommand command = new SqlCommand(sql, connection))
+                using (SqlConnection connection = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
                 {
-                    connection.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    String sql = "SELECT CourseId,CourseName,Rating FROM [dbo].[Course]";
+                    using (SqlCommand command = new SqlCommand(sql, connection))
                     {
-                        while (reader.Read())
+                        connection.Open();
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            Course course = new Course();
-                            course.CourseId = reader["CourseId"].ToString();
-                            course.CourseName = reader["CourseName"].ToString();
-                            course.Rating = reader["Rating"].ToString();
-                            courses.Add(course);
+                            while (reader.Read())
+                            {
+                                Course course = new Course();
+                                course.CourseId = reader["CourseId"].ToString();
+                                course.CourseName = reader["CourseName"].ToString();
+                                course.Rating = reader["Rating"].ToString();
+                                courses.Add(course);
+                            }
                         }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+            }
+
             _logger.LogInformation("Exiting GetCourses");
             return courses;
         }
